@@ -1,8 +1,6 @@
-
 // SPDX-License-Identifier: MIT
 // OpenZeppelin Contracts v4.3.2 (token/ERC20/ERC20.sol)
-
-pragma solidity ^0.8.0;
+pragma solidity  >=0.4.22 <0.9.0;
 
 /**
  * @dev Interface of the ERC20 standard as defined in the EIP.
@@ -82,7 +80,7 @@ interface IERC20 {
     event Approval(address indexed owner, address indexed spender, uint256 value);
 }
 
-interface IUniswapV2Factory {
+interface IPancakeFactory {
     event PairCreated(address indexed token0, address indexed token1, address pair, uint);
 
     function feeTo() external view returns (address);
@@ -97,15 +95,15 @@ interface IUniswapV2Factory {
     function setFeeTo(address) external;
     function setFeeToSetter(address) external;
 }
-interface IUniswapV2Callee {
-    function uniswapV2Call(
+interface IPancakeCallee {
+    function pancakeCall(
         address sender,
         uint amount0,
         uint amount1,
         bytes calldata data
     ) external;
 }
-interface IUniswapV2Pair {
+interface IPancakePair {
     event Approval(address indexed owner, address indexed spender, uint value);
     event Transfer(address indexed from, address indexed to, uint value);
 
@@ -155,7 +153,7 @@ interface IUniswapV2Pair {
 
     function initialize(address, address) external;
 }
-contract Flashswap is IUniswapV2Callee {
+contract Flashswap is IPancakeCallee {
     address private immutable  WETH;
     address private immutable UNISWAP_FACTORY;
 
@@ -166,25 +164,25 @@ contract Flashswap is IUniswapV2Callee {
         UNISWAP_FACTORY = UNISWAP_FACTORY_;
     }
     function getTokenPair(address _tokenBorrow) external view returns(address) {
-        return IUniswapV2Factory(UNISWAP_FACTORY).getPair(_tokenBorrow,WETH);
+        return IPancakeFactory(UNISWAP_FACTORY).getPair(_tokenBorrow,WETH);
     }
     function initFlashloan(address _tokenBorrow,address to, uint amount) external{
-        address pair = IUniswapV2Factory(UNISWAP_FACTORY).getPair(_tokenBorrow,WETH);
+        address pair = IPancakeFactory(UNISWAP_FACTORY).getPair(_tokenBorrow,WETH);
         require(pair!= address(0),'Pair donot exist');
-        address token0 = IUniswapV2Pair(pair).token0();
-        address token1 = IUniswapV2Pair(pair).token1();
-        uint amount0Out = _tokenBorrow == token0 ? amount : 0;
-        uint amount1Out = _tokenBorrow == token1 ? amount : 0;
+        address token0 = IPancakePair(pair).token0();
+        address token1 = IPancakePair(pair).token1();
+        uint amount0Out = _tokenBorrow == token0 ? 0:amount; //: 0;
+        uint amount1Out = _tokenBorrow == token1 ? 0:amount; //: 0;
 
         bytes memory data = abi.encode(_tokenBorrow,amount);
 
-        IUniswapV2Pair(pair).swap(amount0Out, amount1Out,to,data);
+        IPancakePair(pair).swap(amount0Out, amount1Out,to,data);
     }
 
-    function uniswapV2Call(address _sender,uint _amount0,uint _amount1, bytes calldata _data) external override {
-        address token0 = IUniswapV2Pair(msg.sender).token0();
-        address token1 = IUniswapV2Pair(msg.sender).token1();
-        address pair = IUniswapV2Factory(UNISWAP_FACTORY).getPair(token0,token1);
+    function pancakeCall(address _sender,uint _amount0,uint _amount1, bytes calldata _data) external override {
+        address token0 = IPancakePair(msg.sender).token0();
+        address token1 = IPancakePair(msg.sender).token1();
+        address pair = IPancakeFactory(UNISWAP_FACTORY).getPair(token0,token1);
 
         require (msg.sender == pair,'Msg not sent from pair');
         require(_sender == address(this),'Not sendrt');
