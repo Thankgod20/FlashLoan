@@ -201,6 +201,7 @@ contract Flashswap is IPancakeCallee {
         emit log("Fee",fee);
         emit log("Repay Amount",rePay);
 
-        IERC20(_tokenBorrow).transfer(pair,rePay);
+        //IERC20(_tokenBorrow).transfer(pair,rePay);
+        IERC20(WETH).transfer(pair,rePay);
     }
 }
