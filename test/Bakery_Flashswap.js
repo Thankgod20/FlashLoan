@@ -1,5 +1,5 @@
 const BN = require("bn.js");
-const Flashswap = artifacts.require("Flashswap");
+const Flashswap = artifacts.require("BakeryFlashswap");
 const WETH = artifacts.require("WETH");
 
 
@@ -8,7 +8,7 @@ contract("Flashswap Test",(accounts)=> {
     let weth = null;
     let contractAddr = null;
     before(async() => {
-        flashSwap = await Flashswap.new("0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c","0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73");//,"0x10ED43C718714eb63d5aA57B78B54704E256024E","0xe9e7cea3dedca5984780bafc599bd69add087d56");
+        flashSwap = await Flashswap.new("0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c","0xc35DADB65012eC5796536bD9864eD8773aBc74C4");//,"0x10ED43C718714eb63d5aA57B78B54704E256024E","0xe9e7cea3dedca5984780bafc599bd69add087d56");
         weth = await WETH.at("0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c");
         contractAddr = flashSwap.address;
         console.log("Contract Address:-",contractAddr);
