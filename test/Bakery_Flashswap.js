@@ -20,7 +20,7 @@ contract("Flashswap Test",(accounts)=> {
         console.log("Balance of FlashLoan:-",balance.toString())
     })
     it ("Check if pair exist", async() => {
-        let checkPair = await flashSwap.getTokenPair("0xe9e7cea3dedca5984780bafc599bd69add087d56");
+        let checkPair = await flashSwap.getTokenPair("0xe9e7cea3dedca5984780bafc599bd69add087d56");//BUSD mainnet address
         console.log("Pair:-",checkPair);
     })
 
