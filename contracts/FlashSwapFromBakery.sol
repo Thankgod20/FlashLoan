@@ -149,9 +149,147 @@ interface IUniswapV2Pair {
 
     function initialize(address, address) external;
 }
+interface IPancakeRouter01 {
+    function factory() external pure returns (address);
+    function WETH() external pure returns (address);
+
+    function addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint amountADesired,
+        uint amountBDesired,
+        uint amountAMin,
+        uint amountBMin,
+        address to,
+        uint deadline
+    ) external returns (uint amountA, uint amountB, uint liquidity);
+    function addLiquidityETH(
+        address token,
+        uint amountTokenDesired,
+        uint amountTokenMin,
+        uint amountETHMin,
+        address to,
+        uint deadline
+    ) external payable returns (uint amountToken, uint amountETH, uint liquidity);
+    function removeLiquidity(
+        address tokenA,
+        address tokenB,
+        uint liquidity,
+        uint amountAMin,
+        uint amountBMin,
+        address to,
+        uint deadline
+    ) external returns (uint amountA, uint amountB);
+    function removeLiquidityETH(
+        address token,
+        uint liquidity,
+        uint amountTokenMin,
+        uint amountETHMin,
+        address to,
+        uint deadline
+    ) external returns (uint amountToken, uint amountETH);
+    function removeLiquidityWithPermit(
+        address tokenA,
+        address tokenB,
+        uint liquidity,
+        uint amountAMin,
+        uint amountBMin,
+        address to,
+        uint deadline,
+        bool approveMax, uint8 v, bytes32 r, bytes32 s
+    ) external returns (uint amountA, uint amountB);
+    function removeLiquidityETHWithPermit(
+        address token,
+        uint liquidity,
+        uint amountTokenMin,
+        uint amountETHMin,
+        address to,
+        uint deadline,
+        bool approveMax, uint8 v, bytes32 r, bytes32 s
+    ) external returns (uint amountToken, uint amountETH);
+    function swapExactTokensForTokens(
+        uint amountIn,
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external returns (uint[] memory amounts);
+    function swapTokensForExactTokens(
+        uint amountOut,
+        uint amountInMax,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external returns (uint[] memory amounts);
+    function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline)
+        external
+        payable
+        returns (uint[] memory amounts);
+    function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
+        external
+        returns (uint[] memory amounts);
+    function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
+        external
+        returns (uint[] memory amounts);
+    function swapETHForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline)
+        external
+        payable
+        returns (uint[] memory amounts);
+
+    function quote(uint amountA, uint reserveA, uint reserveB) external pure returns (uint amountB);
+    function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) external pure returns (uint amountOut);
+    function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) external pure returns (uint amountIn);
+    function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
+    function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] memory amounts);
+}
+
+interface IPancakeRouter02 is IPancakeRouter01 {
+    function removeLiquidityETHSupportingFeeOnTransferTokens(
+        address token,
+        uint liquidity,
+        uint amountTokenMin,
+        uint amountETHMin,
+        address to,
+        uint deadline
+    ) external returns (uint amountETH);
+    function removeLiquidityETHWithPermitSupportingFeeOnTransferTokens(
+        address token,
+        uint liquidity,
+        uint amountTokenMin,
+        uint amountETHMin,
+        address to,
+        uint deadline,
+        bool approveMax, uint8 v, bytes32 r, bytes32 s
+    ) external returns (uint amountETH);
+
+    function swapExactTokensForTokensSupportingFeeOnTransferTokens(
+        uint amountIn,
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external;
+    function swapExactETHForTokensSupportingFeeOnTransferTokens(
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external payable;
+    function swapExactTokensForETHSupportingFeeOnTransferTokens(
+        uint amountIn,
+        uint amountOutMin,
+        address[] calldata path,
+        address to,
+        uint deadline
+    ) external;
+}
+
 contract BakeryFlashswap is IUniswapV2Callee {
     address private immutable  WETH;
     address private immutable UNISWAP_FACTORY;
+    address private UNISWAP_ROUTER = 0x10ED43C718714eb63d5aA57B78B54704E256024E;
+    address private TokenBorrow;
+    uint constant deadline = 10 days;
 
     event log(string message,  uint val);
 
@@ -162,6 +300,10 @@ contract BakeryFlashswap is IUniswapV2Callee {
     function getTokenPair(address _tokenBorrow) external view returns(address) {
         return IUniswapV2Factory(UNISWAP_FACTORY).getPair(_tokenBorrow,WETH);
     }
+    function setTokenBorrow(address _tokenBorrow) external returns(address){
+        TokenBorrow = _tokenBorrow;
+        return TokenBorrow;
+    }
     function initFlashloan(address _tokenBorrow,address to, uint amount) external{
         address pair = IUniswapV2Factory(UNISWAP_FACTORY).getPair(_tokenBorrow,WETH);
         require(pair!= address(0),'Pair donot exist');
@@ -171,12 +313,13 @@ contract BakeryFlashswap is IUniswapV2Callee {
         uint amount1Out = _tokenBorrow == token1 ? 0:amount; //: 0;
 
         bytes memory data = abi.encode(_tokenBorrow,amount);
-
+        
         IUniswapV2Pair(pair).swap(amount0Out, amount1Out,to,data);
     }
 
     function uniswapV2Call(address _sender,uint _amount0,uint _amount1, bytes calldata _data) external override {
-        //address[] memory path;
+        address[] memory path = new address[](2);
+
         address token0 = IUniswapV2Pair(msg.sender).token0();
         address token1 = IUniswapV2Pair(msg.sender).token1();
         address pair = IUniswapV2Factory(UNISWAP_FACTORY).getPair(token0,token1);
@@ -188,15 +331,18 @@ contract BakeryFlashswap is IUniswapV2Callee {
         (address _tokenBorrow, uint amount) = abi.decode(_data,(address, uint));
 
         //Swap token
+        
+        path[0] = _amount0 == 0 ? token1 : token0;
+        path[1] = _amount0 == 0 ? token0 : token1;
+        IERC20UNISWAP(WETH).approve(UNISWAP_ROUTER, _amount0);
+        IPancakeRouter02(UNISWAP_ROUTER).swapExactTokensForTokensSupportingFeeOnTransferTokens(_amount0,0,path,address(this),deadline);
 
-       // IPancakeRouter02(UNISWAP_ROUTER).swapExactETHForTokensSupportingFeeOnTransferTokens(0,path,address(this),block.timestamp);
-
-        //uint tokenRecieved = IERC20(BUSD).balanceOf(address(this));
-        //emit log("Token Amount",tokenRecieved);
+        uint tokenRecieved = IERC20UNISWAP(TokenBorrow).balanceOf(address(this));
+        emit log("Token Amount",tokenRecieved);
         //Swap to Eth
-         //IERC20(BUSD).approve(UNISWAP_ROUTER, tokenRecieved);
-
-      //  IPancakeRouter02(UNISWAP_ROUTER).swapExactTokensForETHSupportingFeeOnTransferTokens(tokenRecieved, 0, path, address(this), block.timestamp);
+        
+       IERC20UNISWAP(TokenBorrow).approve(UNISWAP_ROUTER, tokenRecieved);
+       IPancakeRouter02(UNISWAP_ROUTER).swapExactTokensForTokensSupportingFeeOnTransferTokens(tokenRecieved, 0, path, address(this), deadline);
 
         //fee for transaction
         uint fee = ((amount *3)/997) +1;

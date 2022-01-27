@@ -19,6 +19,10 @@ contract("Flashswap Test",(accounts)=> {
         let balance = await weth.balanceOf(contractAddr);
         console.log("Balance of FlashLoan:-",balance.toString())
     })
+    it ("Set Token Borrow Address", async() => {
+        let setAddr = await flashSwap.setTokenBorrow("0xe9e7cea3dedca5984780bafc599bd69add087d56");
+        console.log("Print Token to Borrow",setAddr);
+    })
     it ("Check if pair exist", async() => {
         let checkPair = await flashSwap.getTokenPair("0xe9e7cea3dedca5984780bafc599bd69add087d56");//BUSD mainnet address
         console.log("Pair:-",checkPair);
